@@ -1,0 +1,2 @@
+all:
+	g++-10 -lpthread fib_com.cpp -o com 
