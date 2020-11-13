@@ -5,7 +5,8 @@
 #include <chrono>
 #include <type_traits>
 #include <functional>
-// #include<ostream>
+
+#include<future>
 
 #include"future_test.h"
 // #include"thread.h"
@@ -36,12 +37,20 @@ void fibonacci(void *arg)
         fibonacci_arg_t child1_arg = {n - 1, 0};
         fibonacci_arg_t child2_arg = {n - 2, 0};
 
-		stdx::thread threads (fibonacci, &child1_arg);
+		// stdx::thread threads (fibonacci, &child1_arg);
+		stdx::future<fibonacci_arg_t*> fut;
+		fut = stdx::async(fibonacci, &child1_arg); 
+
+		/* std::future*/
+		// std::future<void> fut;
+		// fut = std::async(fibonacci, &child1_arg);
+
 
         /* Calculate fib(n - 2).  We do not create another ULT. */
         fibonacci(&child2_arg);
 
-		threads.join();
+		// threads.join();
+		fut.get();
 
         *p_ret = child1_arg.ret + child2_arg.ret;
     }
@@ -85,6 +94,24 @@ void print_int (void * ptr) {
 	stf* s_ptr = (stf*  ) ptr;
   int x = s_ptr->fut.get();
   std::cout << "value: " << x << '\n';
+}
+
+struct event_related 
+{
+	ABT_eventual ev;
+};
+
+void wake_up(void * ptr) 
+{
+
+	int flag;
+	event_related * ev_ptr = (event_related*) ptr;
+	ABT_eventual_test(ev_ptr->ev, nullptr, &flag) ;
+	cout << "the value in thread is " << flag << endl;
+	sleep(3);
+	ABT_eventual_set(ev_ptr->ev, nullptr, 0);
+	ABT_eventual_test(ev_ptr->ev, nullptr, &flag) ;
+	cout << "the value in thread is " << flag << endl;
 }
 
 
@@ -144,19 +171,45 @@ int main (int argc, char * argv[])
 	// th.join();
 	// cout << futu.fut.get ();
 
+	int flag;
+	int wait_flag;
+	ABT_eventual ev1;
+	ABT_eventual ev2;
+	event_related ev_struct1;
+	event_related ev_struct2;
+	ABT_eventual_create(0, &ev1);
+	ABT_eventual_create(0, &ev2);
+	// ABT_eventual_test(event, nullptr, &flag) ;
+	// cout << "the value is " << flag << endl;
+	ev_struct1.ev = ev1;
+	// ev_struct2.ev = ev2;
+	ev_struct2.ev = ev1;
 
-
-
-
+	stdx::thread ([](int x)
+		{
+		cout <<
+			x*x << endl;
+		},
+		7
+	);
+	// stdx::thread(wake_up, &ev_struct2);
+	// ABT_eventual_test(event, nullptr, &flag) ;
+	// cout << "the value is " << flag << endl;
+	// ABT_eventual_wait(ev1, nullptr);
+	// ABT_eventual_test(event, nullptr, &flag) ;
+	// cout << "the value is " << flag << endl;
+	// ABT_eventual_reset(ev1);
+	// ABT_eventual_test(event, nullptr, &flag) ;
+	// cout << "the value is " << flag << endl;
+	// cout << "finished" << endl;
 
 	
-	stdx::future<test1*> fut1;
-	fut1 = stdx::async(as, &te1);
-	test1 * test;
-	fut1.wait();
-
-	test = fut1.get();
-	cout << "the value is: "<< test->ret << endl;
+	// stdx::future<test1*> fut1;
+	// fut1 = stdx::async(as, &te1);
+	// test1 * test;
+	// fut1.wait();
+	// test = fut1.get();
+	// cout << "the value is: " << test->ret << endl;
 	// stdx::promise<test1> prom1;
 	// fut1 = prom1.get_future();
 	// prom1.set_value(te1);
@@ -166,15 +219,14 @@ int main (int argc, char * argv[])
 	
 
 
-	
 	// stdx::async (stdx::launch::async, as, te1);
 	// t1 = stdx::thread (as, &te1);
 	// ABT_eventual_set(ev1, &te1, sizeof(te1));
 	// ABT_eventual_wait(ev1, (void**)&aaa);
 	// test1 te2;
 	// te2 = fut1.get ();
-	printf ("te1 %d\n", te1.ret);
-	printf ("te2 %d\n", te2->ret);
+	// printf ("te1 %d\n", te1.ret);
+	// printf ("te2 %d\n", te2->ret);
 
 	return 1;
 }

@@ -54,7 +54,7 @@ namespace stdx
 	template<class ss_T>
 	struct shared_state
 	{
-		ss_T value;
+		ss_T value_;
 	};
 
 	// template<class promise_T>
@@ -65,17 +65,15 @@ namespace stdx
 	{
 		typedef struct 
 		{
-			future_T future_T_dup;
-			void(*func)(void*);
-			void* fut_ptr;
-			ABT_eventual eventual;
-			bool ready_flag = 0;
+			future_T future_T_dup_;
+			void(*func_)(void*);
+			ABT_eventual eventual_;
 		}wrapper_args;
 
-		stdx::thread t1;
-		int eventual_flag;
-		bool ready_flag;
-		bool deferred_flag;
+		stdx::thread t1_;
+		int eventual_flag_;
+		int ready_flag_;
+		int deferred_flag_;
 
 		template<class arg_T>
 		friend 
@@ -91,8 +89,8 @@ namespace stdx
 			~future (); 
 
 			void * ptr;
-			shared_state<future_T> * ss_ptr;
-			shared_state<future_T> __ss;
+			shared_state<future_T> * ss_ptr_;
+			shared_state<future_T> ss_;
 			future(const future& other) = delete;
 			future(future&& other);
 			future_T get();
@@ -100,7 +98,7 @@ namespace stdx
 			void wait ();
 			bool valid ();
 
-		    wrapper_args __wa;
+		    wrapper_args wa_;
 
 			template <class Rep, class Period>
 			stdx::future_status 
@@ -121,18 +119,17 @@ namespace stdx
 	class promise 
 	{
 
-		shared_state<promise_T>  __ss;
+		shared_state<promise_T>  ss_;
+		ABT_eventual promise_eventual_;
 
 
 		template<class arg_T>
 		friend 
-		// future<arg_T>
 		future<arg_T>
 		async(void(*func)(void*), arg_T args);
 
+
 		friend class stdx::thread;
-		// friend stdx::thread;
-		
 
 		public:
 			promise(){}
@@ -142,14 +139,19 @@ namespace stdx
 			get_future();
 
 			template<class set_value_T>
-			void set_value(set_value_T && arg_in);	
+			void 
+			set_value(set_value_T && arg_in);	
+
+			template<class set_value_T>
+			void
+			set_value_at_thread_exit (set_value_T && arg_in);
 	};
 
 
 	template<class arg_T>
 	future<arg_T>
 	// async (stdx::launch &policy, void (*func) (void*), arg_T args)
-	async (void (*func) (void*), arg_T args);
+	async (launch policy, void (*func) (void*), arg_T args);
 
 	template<class ret_T>
 	// ret_T	

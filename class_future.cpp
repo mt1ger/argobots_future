@@ -7,26 +7,26 @@
 template<class future_T>
 stdx::future<future_T>::future () 
 {
-	eventual_flag = 0;
-	ready_flag = 0;
-	deferred_flag = 0;
+	eventual_flag_ = 0;
+	ready_flag_ = 0;
+	deferred_flag_ = 0;
 
-	eventual_flag = ABT_eventual_create (0, &__wa.eventual);
+	eventual_flag_ = ABT_eventual_create (0, &wa_.eventual_);
 }
 
 template<class future_T>
 stdx::future<future_T>::future (future<future_T> && other)
 {
-	std::swap(this->ss_ptr, other.ss_ptr);
-	std::swap(this->__wa.eventual, other.__wa.eventual);
+	std::swap(this->ss_ptr_, other.ss_ptr_);
+	std::swap(this->wa_.eventual_, other.wa_.eventual_);
 }
 
 
 template<class future_T>
 stdx::future<future_T>::~future ()
 {
-	if (eventual_flag != 0)
-		ABT_eventual_free(&__wa.eventual);
+	if (eventual_flag_ != 0)
+		ABT_eventual_free(&wa_.eventual_);
 }
 
 
@@ -34,12 +34,23 @@ template<class future_T>
 future_T
 stdx::future<future_T>::get () 
 {
-	if (this->t1.joinable())
+	// Only deal with function (void *) now 
+	// For async created && launch is deferred: return the shared_state in future
+	if (deferred_flag_ == 1) 
 	{
-		t1.join();
-		return __wa.future_T_dup;
+		wa_.func(wa_.future_T_dup_);
+		return wa_.future_T_dup_; 
 	}
-	return ss_ptr->value;
+	
+	// For async created && launch is async: return the shared_state in future
+	if (this->t1_.joinable())
+	{
+		t1_.join();
+		return wa_.future_T_dup_;
+	}
+	
+	// For promise created future: return shared_state in promise
+	return ss_ptr_->value_;
 }
 
 
@@ -47,7 +58,7 @@ template<class future_T>
 void
 stdx::future<future_T>::wait () 
 {
-	ABT_eventual_wait(__wa.eventual, nullptr);
+	ABT_eventual_wait(wa_.eventual_, nullptr);
 }
 
 
@@ -66,12 +77,9 @@ template<class future_T>
 void 
 stdx::future<future_T>::operator=(future<future_T>&& other)
 {
-	std::swap(this->ss_ptr, other.ss_ptr);
-	// std::swap(this->t1, other.t1);
-	this->t1 = std::move(other.t1);
-	// std::swap(this->__wa, other.__wa);
-	this->__wa = other.__wa;
-	// std::swap(this->__wa.eventual, other.__wa.eventual);
+	std::swap(this->ss_ptr_, other.ss_ptr_);
+	this->t1_ = std::move(other.t1_);
+	this->wa_ = other.wa_;
 } 
 
 
@@ -81,7 +89,8 @@ stdx::future_status
 stdx::future<future_T>::wait_for (const std::chrono::duration<Rep, Period>& dur)
 {
 	std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now ();
-	if (ready_flag == 1)	
+	ABT_eventual_test(wa_.eventual_, nullptr, &this->ready_flag_);  
+	if (this->ready_flag_ == 1)	
 		return stdx::future_status::ready;
 	
 	/* this line is for deferred */
@@ -94,7 +103,9 @@ stdx::future<future_T>::wait_for (const std::chrono::duration<Rep, Period>& dur)
 		std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now ();
 		while (std::chrono::duration_cast<std::chrono::duration<Rep, Period>>(end - start) < time)
 			end = std::chrono::steady_clock::now();
-		if (ready_flag == 1)
+
+		ABT_eventual_test(wa_.eventual_, nullptr, &this->ready_flag_);  
+		if (this->ready_flag_ == 1)
 			return stdx::future_status::ready;
 		else
 			return stdx::future_status::timeout;
@@ -106,7 +117,8 @@ template <class Clock, class Duration>
 stdx::future_status
 stdx::future<future_T>::wait_until (const chrono::time_point<Clock,Duration>& abs_time) 
 {
-	if (ready_flag == 1)	
+	ABT_eventual_test(wa_.eventual_, nullptr, &this->ready_flag_);  
+	if (this->ready_flag_ == 1)	
 		return stdx::future_status::ready;
 	
 	/* this line is for deferred */
@@ -117,7 +129,9 @@ stdx::future<future_T>::wait_until (const chrono::time_point<Clock,Duration>& ab
 	else 
 	{
 		while (std::chrono::steady_clock::now () < abs_time);
-		if (ready_flag == 1)
+
+		ABT_eventual_test(wa_.eventual_, nullptr, &this->ready_flag_);  
+		if (this->ready_flag == 1)
 			return stdx::future_status::ready;
 		else
 			return stdx::future_status::timeout;
