@@ -8,8 +8,10 @@
 
 #include<future>
 
-#include"future_test.h"
-// #include"thread.h"
+#include"future.h"
+
+// #define FUTURE
+// #define XFUTURE
 
 using namespace std;
 
@@ -18,14 +20,37 @@ typedef struct {
     int ret;
 } fibonacci_arg_t;
 
-
-typedef struct 
+#ifdef FUTURE
+void fibonacci_future(void *arg)
 {
-	int ret; 	
-} test1;
+    int n = ((fibonacci_arg_t *)arg)->n;
+    int *p_ret = &((fibonacci_arg_t *)arg)->ret;
+
+    if (n <= 1) {
+        *p_ret = 1;
+    } 
+	else {
+        fibonacci_arg_t child1_arg = {n - 1, 0};
+        fibonacci_arg_t child2_arg = {n - 2, 0};
 
 
-void fibonacci(void *arg)
+		std::future<void> fut;
+		fut = std::async(std::launch::async, fibonacci_future, &child1_arg);
+
+
+        /* Calculate fib(n - 2).  We do not create another ULT. */
+        fibonacci_future(&child2_arg);
+
+		// threads.join();
+		fut.get();
+
+        *p_ret = child1_arg.ret + child2_arg.ret;
+    }
+}
+#endif
+
+#ifdef XFUTURE
+void fibonacci_xfuture(void *arg)
 {
     int n = ((fibonacci_arg_t *)arg)->n;
     int *p_ret = &((fibonacci_arg_t *)arg)->ret;
@@ -38,16 +63,11 @@ void fibonacci(void *arg)
         fibonacci_arg_t child2_arg = {n - 2, 0};
 
 		// stdx::thread threads (fibonacci, &child1_arg);
-		stdx::future<fibonacci_arg_t*> fut;
-		fut = stdx::async(fibonacci, &child1_arg); 
-
-		/* std::future*/
-		// std::future<void> fut;
-		// fut = std::async(fibonacci, &child1_arg);
-
+		stdx::future<void> fut;
+		fut = stdx::async(stdx::launch::async, fibonacci_xfuture, &child1_arg); 
 
         /* Calculate fib(n - 2).  We do not create another ULT. */
-        fibonacci(&child2_arg);
+        fibonacci_xfuture(&child2_arg);
 
 		// threads.join();
 		fut.get();
@@ -55,6 +75,7 @@ void fibonacci(void *arg)
         *p_ret = child1_arg.ret + child2_arg.ret;
     }
 }
+#endif
 
 int fibonacci_seq(int n)
 {
@@ -76,13 +97,20 @@ int fibonacci_seq(int n)
 
 void as (void * argu) 
 {
-	int a = ((test1 *)argu)->ret;
+	sleep(1);
+	int a = ((fibonacci_arg_t *)argu)->ret;
 	// int *p = &((test1 *)argu)->ret;
 	printf("the value is %d\n", a * 50);
-	sleep(2);
-	((test1*)argu)->ret = a * 50;
+	((fibonacci_arg_t *)argu)->ret = a * 50;
 	// *p = a * 50;
 	// cout << ((test1*)argu)->ret  << endl;
+}
+
+
+int what (int a) 
+{
+	cout << "in function what a is " << a << endl;
+	return a;
 }
 
 typedef struct
@@ -90,11 +118,19 @@ typedef struct
 	stdx::future<int> fut;
 }stf;
 
-void print_int (void * ptr) {
-	stf* s_ptr = (stf*  ) ptr;
-  int x = s_ptr->fut.get();
-  std::cout << "value: " << x << '\n';
+// void print_int (void * ptr) {
+// 	stf* s_ptr = (stf*  ) ptr;
+// 	int x = s_ptr->fut.get();
+// 	std::cout << "value: " << x << '\n';
+// }
+void print(void * ptr) 
+{
+	fibonacci_arg_t * aaa = (fibonacci_arg_t*) ptr;
+	cout << aaa->ret << ' ' << aaa->n << endl;
 }
+
+
+
 
 struct event_related 
 {
@@ -142,56 +178,76 @@ int main (int argc, char * argv[])
 
 	chrono::steady_clock::time_point start = chrono::steady_clock::now();
 
-	fibonacci_arg_t arg = {n, 0};
-    fibonacci(&arg);
-    int ret = arg.ret;
+	/* For future */
+	#ifdef FUTURE
+	fibonacci_arg_t arg_future = {n, 0};
+    fibonacci_future(&arg_future);
+    int ret = arg_future.ret;
     int ans = fibonacci_seq(n);
-	cout << "The returned value is " << ret << "; The verification is " << ans << endl;
+	#endif
+
+
+	/* For xfuture */
+	#ifdef XFUTURE
+	fibonacci_arg_t arg_xfuture = {n, 0};
+    fibonacci_xfuture(&arg_xfuture);
+    int ret = arg_xfuture.ret;
+    int ans = fibonacci_seq(n);
+	#endif
+
+	// cout << "The returned value is " << ret << "; The verification is " << ans << endl;
 
 	chrono::steady_clock::time_point end = chrono::steady_clock::now();
 	chrono::duration<double> time_span = chrono::duration_cast<chrono::duration<double> >(end-start);
 	cout << "Execution time: " << time_span.count() << endl;
+	chrono::milliseconds ms (5000);
+	chrono::steady_clock::time_point e = chrono::steady_clock::now();
+	chrono::steady_clock::time_point s = chrono::steady_clock::now();
+	
 
 
 	/* Do not touch this */
-	test1 te1;
+	fibonacci_arg_t te1;
 	te1.ret = 5;
-	test1* te2;
-	te2 = new test1;
+	fibonacci_arg_t * te2;
+	te2 = new fibonacci_arg_t;
 	te2->ret = 15;
-	test1* te3;
 
 	/* used to test promise.set_value and future.get */
 	// stf futu;
-	// stdx::promise<int> foo;
+	// // stdx::promise<int> foo;
 	// stdx::promise<int> bar = stdx::promise<int>();
 	// futu.fut = bar.get_future();
 	// stdx::thread th (print_int, &futu);
-	// bar.set_value (20);
-	// th.join();
+	// stdx::thread th ([](void* ptr){stdx::promise<int> * ptr_internal = (stdx::promise<int>*) ptr; ptr_internal->set_value_at_thread_exit(50);}, &bar);
+	// // stdx::thread th ([&bar](){bar.set_value_at_thread_exit(50);});
+	// // // bar.set_value (150);
+	// // // th.join();
+	// futu.fut.wait();
 	// cout << futu.fut.get ();
 
-	int flag;
-	int wait_flag;
-	ABT_eventual ev1;
-	ABT_eventual ev2;
-	event_related ev_struct1;
-	event_related ev_struct2;
-	ABT_eventual_create(0, &ev1);
-	ABT_eventual_create(0, &ev2);
-	// ABT_eventual_test(event, nullptr, &flag) ;
-	// cout << "the value is " << flag << endl;
-	ev_struct1.ev = ev1;
-	// ev_struct2.ev = ev2;
-	ev_struct2.ev = ev1;
+	/* Use to Test ABT_eventual Functions */
+	// int flag;
+	// int wait_flag;
+	// ABT_eventual ev1;
+	// ABT_eventual ev2;
+	// event_related ev_struct1;
+	// event_related ev_struct2;
+	// ABT_eventual_create(0, &ev1);
+	// ABT_eventual_create(0, &ev2);
+	// // ABT_eventual_test(event, nullptr, &flag) ;
+	// // cout << "the value is " << flag << endl;
+	// ev_struct1.ev = ev1;
+	// // ev_struct2.ev = ev2;
+	// ev_struct2.ev = ev1;
 
-	stdx::thread ([](int x)
-		{
-		cout <<
-			x*x << endl;
-		},
-		7
-	);
+	// stdx::thread ([](int x)
+	// 	{
+	// 	cout <<
+	// 		x*x << endl;
+	// 	},
+	// 	7
+	// );
 	// stdx::thread(wake_up, &ev_struct2);
 	// ABT_eventual_test(event, nullptr, &flag) ;
 	// cout << "the value is " << flag << endl;
@@ -204,11 +260,18 @@ int main (int argc, char * argv[])
 	// cout << "finished" << endl;
 
 	
-	// stdx::future<test1*> fut1;
-	// fut1 = stdx::async(as, &te1);
-	// test1 * test;
+	stdx::future<void> fut1;
+	stdx::future<int> fut2;
+	int a = 50;
+	fut1 = stdx::async(stdx::launch::async, as, &te1);
+	fut2 = stdx::async(stdx::launch::async, what, a);
+	// std::chrono::steady_clock::time_point aaa = std::chrono::steady_clock::now();
+	// std::chrono::seconds sec(10);
+	// fut1.wait_for(sec);
 	// fut1.wait();
 	// test = fut1.get();
+	fut1.get();
+	fut2.get();
 	// cout << "the value is: " << test->ret << endl;
 	// stdx::promise<test1> prom1;
 	// fut1 = prom1.get_future();

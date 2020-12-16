@@ -1,27 +1,9 @@
 #include "thread.h"
 
-// stdx::thread::thread(void (* func)(void*), void *argu)
-// {
-// 	int rank;
-// 	int flag;
-//
-// 	#<{(| Initializing pools, schedulors and ESs in singleton class |)}>#
-// 	#<{(| And offer a handler to reach the resources for this ULT |)}>#
-// 	psingleton = thread_Singleton::instance();
-//
-// 	ABT_xstream_self_rank(&rank);
-// 	ABT_pool target_pool = psingleton->pools[rank]; 
-// 	flag = ABT_thread_create(target_pool, func, argu,
-// 			ABT_THREAD_ATTR_NULL, &__id.ult);
-// 	tid = psingleton->Gtid;
-// 	psingleton->Gtid++;
-// }
-
 stdx::thread::thread (thread&& other) 
 {
 	swap (other);
 }
-
 
 void 
 stdx::thread::join ()
