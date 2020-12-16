@@ -6,6 +6,7 @@
 #include<cstdlib>
 #include<iostream>
 #include<chrono>
+#include<memory> // smart pointer
 #include<vector>
 #include<iterator>
 #include<functional>
@@ -63,6 +64,15 @@ namespace stdx
 	// template<class promise_T>
 	// class promise;
 
+	template<class Ret, class ...Args>
+	struct future_wrapper_args
+	{
+		std::tuple<Args...> tuple_;
+		std::function<Ret(Args...)> func_;
+		shared_ptr<shared_state<Ret>> ss_ptr_in_fwa;
+		// typedef typename result_of<Fn(Args...)>::type my_type_;
+		// stdx::future<Ret>* future_ptr_;
+	};
 
 	template<class future_T>
 	class future
@@ -72,7 +82,8 @@ namespace stdx
 		int eventual_flag_; // Used to check if the future_eventual_ created
 		int deferred_flag_; // Used to indicate the launch policy
 		int ready_flag_; // Used to check future_status
-		void * ptr_; // Used to free async created future_wrapper_args
+		void * args_ptr_; // Used to free async created future_wrapper_args
+		shared_ptr<shared_state<future_T>> ss_ptr_; // shared_state pointer
 	
 		/* To enable get() */
 		// template<class Fn, class ...Args>
@@ -87,19 +98,15 @@ namespace stdx
 		future<typename result_of<Fn(Args...)>::type>
 		async(stdx::launch policy, Fn func_in, Args... args);
 
-		template<class Fn, class ...Args>
-		friend 
-		void
-		future_wrapper(void * ptr);
+		// template<class Fn, class ...Args>
+		// friend 
+		// void
+		// future_wrapper(void * ptr);
 
 
 		public:
 			future (); 
-			// ~future (); 
-
-			void * args_ptr_;
-			void * ss_ptr_;
-			int no_ret_flag;
+			~future (); 
 
 			future(const future& other) = delete;
 			future(future&& other);
@@ -121,8 +128,21 @@ namespace stdx
 			// wrapper(wrapper_args* wa);
 
 			void operator=(future<future_T>&& other);
+
+			template<class Fn, class ...Args>
+			inline void
+			future_wrapper (void* ptr)  
+			{
+				stdx::future_wrapper_args<future_T, Args...>*  fwa_ptr;
+				fwa_ptr = (stdx::future_wrapper_args<future_T, Args...>*) ptr;
+				future_T ret;
+				
+				ret = std::apply(fwa_ptr->func_, fwa_ptr->tuple_);
+				ss_ptr_->ret_value_ = ret;
+			}
 	};
-	
+
+
 	template<>
 	class future<void>
 	{
@@ -131,14 +151,8 @@ namespace stdx
 		int eventual_flag_; // Used to check if the future_eventual_ created
 		int deferred_flag_; // Used to indicate the launch policy
 		int ready_flag_; // Used to check future_status
-		void * ptr_; // Used to free async created future_wrapper_args
+		void * args_ptr_; // Used to free async created future_wrapper_args
 	
-		/* To enable get() */
-		// template<class Fn, class ...Args>
-		// static inline vector<future_wrapper_args<Fn, Args...>*> fwa_vec; 
-		// static inline long long fwa_vec_cnt = 0;
-		// long long fwa_vec_index;
-
 		int promise_created_flag_;
 
 		template<class Fn, class ...Args>
@@ -146,11 +160,11 @@ namespace stdx
 		future<typename result_of<Fn(Args...)>::type>
 		async(stdx::launch policy, Fn func_in, Args... args);
 
-		template<class Fn, class ...Args>
-		friend 
-		void
-		future_wrapper(void * ptr);
-
+		// template<class Fn, class ...Args>
+		// friend 
+		// void
+		// future_wrapper(void * ptr);
+		
 
 		public:
 			inline future ()
@@ -159,22 +173,17 @@ namespace stdx
 				eventual_flag_ = 0;
 				ready_flag_ = 0;
 				deferred_flag_ = 0;
-				no_ret_flag = 0;
 				// fwa_vec_cnt = 0;
 				// fwa_vec_index = 0;
 
 				eventual_flag_ = ABT_eventual_create (0, &future_eventual_);
 			}
-			// ~future () 
-			// {
-			// 	free(args_ptr_);
-			// 	if (eventual_flag_ != 0)
-			// 		ABT_eventual_free(&future_eventual_);
-			// }
-
-			void * args_ptr_;
-			// void * ss_ptr_;
-			int no_ret_flag;
+			~future () 
+			{
+				free(args_ptr_);
+				if (eventual_flag_ != 0)
+					ABT_eventual_free(&future_eventual_);
+			}
 
 			future(const future& other) = delete;
 			future(future&& other);
@@ -202,32 +211,27 @@ namespace stdx
 			// future_T
 			// wrapper(wrapper_args* wa);
 
-			inline void 
+			void 
 			operator=(future<void>&& other)
 			{
 				this->t1_ = std::move(other.t1_);
 				this->deferred_flag_ = other.deferred_flag_;
-				this->no_ret_flag = other.no_ret_flag;
+				this->args_ptr_ = nullptr;
+				std::swap(this->args_ptr_, other.args_ptr_);
+			}
+
+
+			// Must put future_wrapper_args ahead 
+			template<class Fn, class ...Args>
+			inline void 
+			future_wrapper (void* ptr) 
+			{
+				stdx::future_wrapper_args<void, Args...>*  fwa_ptr;
+				fwa_ptr = (stdx::future_wrapper_args<void, Args...>*) ptr;
+				std::apply(fwa_ptr->func_, fwa_ptr->tuple_);	
 			}
 	};
 
-	template<class Ret, class ...Args>
-	struct future_wrapper_args
-	{
-		std::tuple<Args...> tuple_;
-		std::function<Ret(Args...)> func_;
-		// typedef typename result_of<Fn(Args...)>::type my_type_;
-		stdx::future<Ret>* future_ptr_;
-	};
-
-	template<class ...Args>
-	struct future_wrapper_args_void
-	{
-		std::tuple<Args...> tuple_;
-		std::function<void(Args...)> func_;
-		// typedef typename result_of<Fn(Args...)>::type my_type_;
-		stdx::future<void>* future_ptr_;
-	};
 
 	template<class promise_T>
 	class promise 
@@ -286,9 +290,9 @@ namespace stdx
 	future<typename result_of<Fn(Args...)>::type>
 	async (launch policy, Fn func_in, Args ...args);
 
-	template<class Fn, class ...Args>
-	void
-	future_wrapper(void* ptr);
+	// template<class Fn, class ...Args>
+	// void
+	// future_wrapper(void* ptr);
 }
 
 #include"class_future.cpp"

@@ -11,7 +11,7 @@
 #include"future.h"
 
 // #define FUTURE
-// #define XFUTURE
+#define XFUTURE
 
 using namespace std;
 
@@ -95,7 +95,7 @@ int fibonacci_seq(int n)
 }
 
 
-void as (void * argu) 
+void void_func_voidp (void * argu) 
 {
 	sleep(1);
 	int a = ((fibonacci_arg_t *)argu)->ret;
@@ -107,7 +107,7 @@ void as (void * argu)
 }
 
 
-int what (int a) 
+int int_func_in (int a) 
 {
 	cout << "in function what a is " << a << endl;
 	return a;
@@ -195,7 +195,7 @@ int main (int argc, char * argv[])
     int ans = fibonacci_seq(n);
 	#endif
 
-	// cout << "The returned value is " << ret << "; The verification is " << ans << endl;
+	cout << "The returned value is " << ret << "; The verification is " << ans << endl;
 
 	chrono::steady_clock::time_point end = chrono::steady_clock::now();
 	chrono::duration<double> time_span = chrono::duration_cast<chrono::duration<double> >(end-start);
@@ -261,17 +261,21 @@ int main (int argc, char * argv[])
 
 	
 	stdx::future<void> fut1;
-	stdx::future<int> fut2;
+	// stdx::future<int> fut2;
 	int a = 50;
-	fut1 = stdx::async(stdx::launch::async, as, &te1);
-	fut2 = stdx::async(stdx::launch::async, what, a);
+	fut1 = stdx::async(stdx::launch::async, void_func_voidp, &te1);
+	// fut2 = stdx::async(stdx::launch::async, int_func_in, a);
 	// std::chrono::steady_clock::time_point aaa = std::chrono::steady_clock::now();
 	// std::chrono::seconds sec(10);
 	// fut1.wait_for(sec);
 	// fut1.wait();
 	// test = fut1.get();
 	fut1.get();
-	fut2.get();
+	// fut2.get();
+	// int ret ;
+	// ret=fut2.get();
+	// cout << "the ret is " << ret << endl;
+
 	// cout << "the value is: " << test->ret << endl;
 	// stdx::promise<test1> prom1;
 	// fut1 = prom1.get_future();
@@ -279,11 +283,9 @@ int main (int argc, char * argv[])
 	// test1 ttt;
 	// ttt = fut1.get();
 	// cout << ttt.ret << endl;
-	
 
 
 	// stdx::async (stdx::launch::async, as, te1);
-	// t1 = stdx::thread (as, &te1);
 	// ABT_eventual_set(ev1, &te1, sizeof(te1));
 	// ABT_eventual_wait(ev1, (void**)&aaa);
 	// test1 te2;

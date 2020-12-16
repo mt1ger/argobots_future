@@ -3,6 +3,8 @@
 stdx::thread::thread (thread&& other) 
 {
 	swap (other);
+	this->xwargs_ptr_ = nullptr;
+	std::swap(this->xwargs_ptr_, other.xwargs_ptr_);	
 }
 
 void 
@@ -41,6 +43,8 @@ stdx::thread::operator=(thread&& other)
 		std::terminate();
 	}
 	this->swap(other);
+	this->xwargs_ptr_ = nullptr;
+	std::swap(this->xwargs_ptr_, other.xwargs_ptr_);	
 	return *this;
 }
 

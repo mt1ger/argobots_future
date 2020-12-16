@@ -67,7 +67,7 @@ namespace stdx
 				xwargs_ptr = new xthread_wrapper_args_t<mytype_, Args...>;
 				xwargs_ptr->func_ = func_in;
 				xwargs_ptr->tuple_ = std::make_tuple(args...);
-				ptr_= xwargs_ptr;
+				xwargs_ptr_ = xwargs_ptr;
 
 				/* Initializing pools, schedulors and ESs in singleton class */
 				/* And offer a handler to reach the resources for this ULT */
@@ -84,7 +84,7 @@ namespace stdx
 
 			~thread() 
 			{
-				// free(ptr_);
+				free(xwargs_ptr_);
 			}
 
 			void join ();
@@ -96,7 +96,7 @@ namespace stdx
 			thread& operator=(thread&& other);
 
 		private:
-			void * ptr_;
+			void * xwargs_ptr_;
 			id __id;
 	};
 
