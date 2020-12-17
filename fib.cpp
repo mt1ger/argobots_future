@@ -225,57 +225,48 @@ int main (int argc, char * argv[])
 	// cout << "finished" << endl;
 
 
+	/* section to test wait(), wait_for() and wait_until() */
+	// chrono::milliseconds span (100);
+	// std::chrono::steady_clock::time_point two_seconds_passed
+	// 	= std::chrono::steady_clock::now() + std::chrono::seconds(3);
+	// stdx::future<void> fut1;
 	// stdx::future<void> fut3;
-//  std::chrono::system_clock::time_point two_seconds_passed
-//         = std::chrono::system_clock::now() + std::chrono::seconds(2);
- std::chrono::steady_clock::time_point two_seconds_passed
-        = std::chrono::steady_clock::now() + std::chrono::seconds(3);
-	stdx::future<void> fut1;
-	stdx::future<int> fut2;
+	// stdx::future<int> fut2;
 	stdx::future<int> fut4;
-	int a1 = 50;
+	// int a1 = 50;
 	int a2 = 333;
-	fut1 = stdx::async(stdx::launch::async, void_func_voidp, &te1);
+	// fut1 = stdx::async(stdx::launch::async, void_func_voidp, &te1);
 	// fut3 = stdx::async(stdx::launch::deferred, void_func_voidp, te2);
 	// fut2 = stdx::async(stdx::launch::async, int_func_in, a1);
-	// fut4 = stdx::async(stdx::launch::deferred, int_func_in, a2);
-	
-	// std::chrono::steady_clock::time_point aaa = std::chrono::steady_clock::now();
-	// std::chrono::seconds sec(10);
-	// fut2.wait_for(sec);
-	//   std::cout << "checking, please wait";
+	fut4 = stdx::async(stdx::launch::deferred, int_func_in, a2);
 
+	// while(stdx::future_status::timeout == fut2.wait_until(two_seconds_passed))
+	// while(stdx::future_status::timeout == fut1.wait_until(two_seconds_passed))
+	// 	cout << '.';
+	// cout << endl;
 
- if(stdx::future_status::ready == fut1.wait_until(two_seconds_passed))
-        {
-			// std::cout << "f_completes: " << fut1.get() << "\n"; 
-			std::cout << "f_completes " << endl; 
-				fut1.get(); 
-		}
-    else
-        { std::cout << "f_completes did not complete!\n"; }
-
+	// if(stdx::future_status::ready == fut1.wait_until(two_seconds_passed))
+	// if(stdx::future_status::ready == fut2.wait_until(two_seconds_passed))
+	// {
+	// 	std::cout << "f_completes: " << fut2.get() << "\n"; 
+	// 	// std::cout << "f_completes " << endl; 
+	// 	// fut1.get(); 
+	// }
+	// else
+	// { std::cout << "f_completes did not complete!\n"; }
 
 	// fut1.wait();
+	// fut3.wait();
 	// test = fut1.get();
 	// fut1.get();
 	// fut3.get();
 
 	// fut2.wait ();
 	// fut4.wait ();
-	// int  ret1 = 0, ret2;
+	int  ret1 = 0, ret2 = 0;
 	// ret1 = fut2.get();
 	// ret2 = fut4.get();
-	// cout << "the ret is " << ret1 << " and " << ret2 << endl;
-
-	// cout << "the value is: " << test->ret << endl;
-	// stdx::promise<test1> prom1;
-	// fut1 = prom1.get_future();
-	// prom1.set_value(te1);
-	// test1 ttt;
-	// ttt = fut1.get();
-	// cout << ttt.ret << endl;
-
+	cout << "the ret is " << ret1 << " and " << ret2 << endl;
 
 	return 1;
 }

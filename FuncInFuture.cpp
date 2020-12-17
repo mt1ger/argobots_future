@@ -16,7 +16,7 @@ stdx::async (stdx::launch policy, Fn func_in, Args ...args)
 
 	fwa_ptr->func_ = func_in;
 	fwa_ptr->tuple_ = std::make_tuple(args...); 
-	fwa_ptr->eventual_ = fut.future_eventual_;
+	// fwa_ptr->eventual_ = fut.future_eventual_;
 
 	if (policy == stdx::launch::async) 
 	{
@@ -34,35 +34,4 @@ stdx::async (stdx::launch policy, Fn func_in, Args ...args)
 	return fut;
 }
 
-
-// template<class Fn, class ...Args>
-// void
-// stdx::future_wrapper (void* ptr) 
-// {
-//
-// 	#<{(| transform the input void pointer to wrapper_args pointer |)}>#
-// 	cout << "AAAA" << endl;
-// 	typedef typename result_of<Fn(Args...)>::type my_type_;
-// 	stdx::future_wrapper_args<my_type_, Args...>*  fwa_ptr;
-// 	fwa_ptr = (future_wrapper_args<my_type_, Args...>*) ptr;
-// 	cout << "BBBB" << endl;
-//
-// 	printf("is_same %d\n", is_same<my_type_, void>::value);
-// 	if((is_same<my_type_, void>::value) == true)	
-// 	{
-// 		std::apply(fwa_ptr->func_, fwa_ptr->tuple_);	
-// 		fwa_ptr->future_ptr_->no_ret_flag = 1;
-// 	}
-// 	else
-// 	{
-// 		cout << "in future_wrapper my_type_ is int? " << is_same<my_type_, int>::value << endl;
-// 		my_type_ ret;
-// 		shared_state<my_type_>* my_ptr;
-// 		my_ptr = new shared_state<my_type_>;
-// 		ret = std::apply(fwa_ptr->func_, fwa_ptr->tuple_);
-// 		my_ptr->ret_value_ = ret;
-// 		fwa_ptr->future_ptr_->ss_ptr_ = my_ptr;
-// 	}
-// 	ABT_eventual_set(fwa_ptr->future_ptr_->future_eventual_, nullptr, 0);
-// }
 #endif

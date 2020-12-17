@@ -66,19 +66,19 @@ namespace stdx
 	{
 		std::tuple<Args...> tuple_;
 		std::function<Ret(Args...)> func_;
-		ABT_eventual eventual_;
+		// ABT_eventual eventual_;
 	};
 
 	template<class future_T>
 	class future
 	{
 		stdx::thread t1_;
-		ABT_eventual future_eventual_;
 		int eventual_flag_; // Used to check if the future_eventual_ created
 		int deferred_flag_; // Used to indicate the launch policy
 		int ready_flag_; // Used to check future_status
 		void * args_ptr_; // Used to free async created future_wrapper_args
-		shared_ptr<shared_state<future_T>> ss_ptr_; // shared_state pointer
+		std::shared_ptr<shared_state<future_T>> ss_ptr_; // shared_state pointer
+		std::shared_ptr<ABT_eventual> eventual_ptr_;
 		bool valid_flag_;
 	
 		int promise_created_flag_;
@@ -120,7 +120,8 @@ namespace stdx
 				
 				ret = std::apply(fwa_ptr->func_, fwa_ptr->tuple_);
 				ss_ptr_->ret_value_ = ret;
-				ABT_eventual_set(fwa_ptr->eventual_, nullptr, 0);
+				// ABT_eventual_set(fwa_ptr->eventual_, nullptr, 0);
+				ABT_eventual_set(*eventual_ptr_, nullptr, 0);
 			}
 
 			template<class Fn, class ...Args>
@@ -129,7 +130,7 @@ namespace stdx
 			{
 				stdx::future_wrapper_args<future_T, Args...>*  fwa_ptr;
 				fwa_ptr = (stdx::future_wrapper_args<future_T, Args...>*) ptr;
-				ABT_eventual_wait(fwa_ptr->eventual_, nullptr);
+				ABT_eventual_wait(*eventual_ptr_, nullptr);
 				future_T ret;
 				
 				ret = std::apply(fwa_ptr->func_, fwa_ptr->tuple_);
@@ -142,7 +143,7 @@ namespace stdx
 	class future<void>
 	{
 		stdx::thread t1_;
-		ABT_eventual future_eventual_;
+		std::shared_ptr<ABT_eventual> eventual_ptr_;
 		int eventual_flag_; // Used to check if the future_eventual_ created
 		int deferred_flag_; // Used to indicate the launch policy
 		int ready_flag_; // Used to check future_status
@@ -165,13 +166,14 @@ namespace stdx
 				deferred_flag_ = 0;
 				valid_flag_ = 0;
 
-				eventual_flag_ = ABT_eventual_create (0, &future_eventual_);
+				eventual_ptr_ = std::make_shared<ABT_eventual>();
+				eventual_flag_ = ABT_eventual_create (0, &(*eventual_ptr_));
 			}
 			inline ~future () 
 			{
 				free(args_ptr_);
 				if (eventual_flag_ != 0)
-					ABT_eventual_free(&future_eventual_);
+					ABT_eventual_free(&(*eventual_ptr_));
 			}
 
 			future(const future& other) = delete;
@@ -180,7 +182,7 @@ namespace stdx
 			{
 				this->args_ptr_ = nullptr;
 				std::swap(this->args_ptr_, other.args_ptr_);
-				std::swap(this->future_eventual_, other.future_eventual_);
+				std::swap(this->eventual_ptr_, other.eventual_ptr_);
 				std::swap(this->deferred_flag_, other.deferred_flag_);
 				std::swap(this->valid_flag_, other.valid_flag_);
 				std::swap(this->ready_flag_, other.ready_flag_);
@@ -192,7 +194,7 @@ namespace stdx
 				/* For async created && launch is DEFERRED: return the shared_state in future */
 				if (deferred_flag_ == 1) 
 				{
-					ABT_eventual_set(future_eventual_, nullptr, 0);
+					ABT_eventual_set(*eventual_ptr_, nullptr, 0);
 					if (this->t1_.joinable())
 						t1_.join ();
 				}
@@ -208,7 +210,7 @@ namespace stdx
 			inline void wait () 
 			{
 				if (deferred_flag_ != 1)
-					ABT_eventual_wait(future_eventual_, nullptr);
+					ABT_eventual_wait(*eventual_ptr_, nullptr);
 				else	
 					cout << "future is in deferred status" << endl;
 			}
@@ -224,7 +226,7 @@ namespace stdx
 			{
 				std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now ();
 				std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now ();
-				ABT_eventual_test(future_eventual_, nullptr, &this->ready_flag_);  
+				ABT_eventual_test(*eventual_ptr_, nullptr, &this->ready_flag_);  
 				if (this->ready_flag_ == 1)	
 					return stdx::future_status::ready;
 				else if (this->deferred_flag_ == 1) 
@@ -236,7 +238,7 @@ namespace stdx
 					while (std::chrono::duration_cast<std::chrono::milliseconds>(end - start) < dur)
 						end = std::chrono::steady_clock::now();
 
-					ABT_eventual_test(future_eventual_, nullptr, &this->ready_flag_);  
+					ABT_eventual_test(*eventual_ptr_, nullptr, &this->ready_flag_);  
 					if (this->ready_flag_ == 1)
 						return stdx::future_status::ready;
 					else
@@ -249,7 +251,7 @@ namespace stdx
 			stdx::future_status
 			wait_until (const chrono::time_point<Clock,Duration>& abs_time) 
 			{
-				ABT_eventual_test(future_eventual_, nullptr, &this->ready_flag_);  
+				ABT_eventual_test(*eventual_ptr_, nullptr, &this->ready_flag_);  
 				if (this->ready_flag_ == 1)	
 					return stdx::future_status::ready;
 				else if (this->deferred_flag_ == 1) 
@@ -260,7 +262,7 @@ namespace stdx
 				{
 					while (std::chrono::steady_clock::now () < abs_time);
 
-					ABT_eventual_test(future_eventual_, nullptr, &this->ready_flag_);  
+					ABT_eventual_test(*eventual_ptr_, nullptr, &this->ready_flag_);  
 					if (this->ready_flag_ == 1)
 						return stdx::future_status::ready;
 					else
@@ -274,7 +276,7 @@ namespace stdx
 			{
 				this->t1_ = std::move(other.t1_);
 				this->deferred_flag_ = other.deferred_flag_;
-				this->future_eventual_ = other.future_eventual_;
+				this->eventual_ptr_ = other.eventual_ptr_;
 				this->valid_flag_= other.valid_flag_;
 				this->ready_flag_= other.ready_flag_;
 				this->args_ptr_ = nullptr;
@@ -290,7 +292,8 @@ namespace stdx
 				stdx::future_wrapper_args<void, Args...>*  fwa_ptr;
 				fwa_ptr = (stdx::future_wrapper_args<void, Args...>*) ptr;
 				std::apply(fwa_ptr->func_, fwa_ptr->tuple_);	
-				ABT_eventual_set(fwa_ptr->eventual_, nullptr, 0);
+				// ABT_eventual_set(fwa_ptr->eventual_, nullptr, 0);
+				ABT_eventual_set(*eventual_ptr_, nullptr, 0);
 			}
 
 			template<class Fn, class ...Args>
@@ -299,44 +302,42 @@ namespace stdx
 			{
 				stdx::future_wrapper_args<void, Args...>*  fwa_ptr;
 				fwa_ptr = (stdx::future_wrapper_args<void, Args...>*) ptr;
-				ABT_eventual_wait(fwa_ptr->eventual_, nullptr);
+				// ABT_eventual_wait(fwa_ptr->eventual_, nullptr);
+				ABT_eventual_wait(*eventual_ptr_, nullptr);
 				std::apply(fwa_ptr->func_, fwa_ptr->tuple_);
 			}
 	};
 
 
-	template<class promise_T>
-	class promise 
-	{
-
-		shared_state<promise_T>  ss_;
-		ABT_eventual promise_eventual_;
-
-		template<class arg_T>
-		friend 
-		future<arg_T>
-		async(void(*func)(void*), arg_T args);
-
-
-		friend class stdx::thread;
-
-		public:
-			promise(){
-				ABT_eventual_create(0, &promise_eventual_);
-			}
-			~promise(){}
-
-			future<promise_T>
-			get_future();
-
-			template<class set_value_T>
-			void 
-			set_value(set_value_T && arg_in);	
-
-			template<class set_value_T>
-			void
-			set_value_at_thread_exit (set_value_T && arg_in);
-	};
+	// template<class promise_T>
+	// class promise 
+	// {
+    //
+	// 	std::shared_ptr<shared_state<promise_T>*>  ss_ptr_;
+	// 	ABT_eventual promise_eventual_;
+    //
+	// 	// template<class arg_T>
+	// 	// friend 
+	// 	// future<arg_T>
+	// 	// async(void(*func)(void*), arg_T args);
+    //
+	// 	public:
+	// 		promise(){
+	// 			ABT_eventual_create(0, &promise_eventual_);
+	// 		}
+	// 		~promise(){}
+    //
+	// 		future<promise_T>
+	// 		get_future();
+    //
+	// 		template<class set_value_T>
+	// 		void 
+	// 		set_value(set_value_T && arg_in);	
+    //
+	// 		template<class set_value_T>
+	// 		void
+	// 		set_value_at_thread_exit (set_value_T && arg_in);
+	// };
 
 
 	template<class Ret, class ...Args>

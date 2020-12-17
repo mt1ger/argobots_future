@@ -14,7 +14,8 @@ stdx::future<future_T>::future ()
 	valid_flag_ = 0;
 
 	ss_ptr_ = std::make_shared<shared_state<future_T>>();
-	eventual_flag_ = ABT_eventual_create (0, &future_eventual_);
+	eventual_ptr_ = std::make_shared<ABT_eventual>();
+	eventual_flag_ = ABT_eventual_create (0, &(*eventual_ptr_));
 }
 
 template<class future_T>
@@ -23,7 +24,7 @@ stdx::future<future_T>::future (future<future_T> && other)
 	this->args_ptr_ = nullptr;
 	std::swap(this->args_ptr_, other.args_ptr_);
 	std::swap(this->ss_ptr_, other.ss_ptr_);
-	std::swap(this->future_eventual_, other.future_eventual_);
+	std::swap(this->eventual_ptr_, other.eventual_ptr_);
 	std::swap(this->deferred_flag_, other.deferred_flag_);
 	std::swap(this->valid_flag_, other.valid_flag_);
 	std::swap(this->ready_flag_, other.ready_flag_);
@@ -35,7 +36,7 @@ stdx::future<future_T>::~future ()
 {
 	free(args_ptr_);
 	if (eventual_flag_ != 0)
-		ABT_eventual_free(&future_eventual_);
+		ABT_eventual_free(&(*eventual_ptr_));
 }
 
 
@@ -47,7 +48,7 @@ stdx::future<future_T>::get ()
 	future_T ret;
 	if (deferred_flag_ == 1) 
 	{
-		ABT_eventual_set(future_eventual_, nullptr, 0);
+		ABT_eventual_set(*eventual_ptr_, nullptr, 0);
 		if (this->t1_.joinable())
 			t1_.join ();
 	}
@@ -67,7 +68,7 @@ void
 stdx::future<future_T>::wait () 
 {
 	if (deferred_flag_ != 1) 
-		ABT_eventual_wait(future_eventual_, nullptr);
+		ABT_eventual_wait(*eventual_ptr_, nullptr);
 	else	
 		cout << "future is in deferred status" << endl;
 }
@@ -92,7 +93,7 @@ stdx::future<future_T>::operator=(future<future_T>&& other)
 	this->deferred_flag_ = other.deferred_flag_;
 	this->valid_flag_ = other.valid_flag_;
 	this->ready_flag_ = other.ready_flag_;
-	this->future_eventual_ = other.future_eventual_;
+	this->eventual_ptr_ = other.eventual_ptr_;
 } 
 
 
@@ -103,7 +104,7 @@ stdx::future<future_T>::wait_for (const std::chrono::duration<Rep, Period>& dur)
 {
 	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now ();
 	std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now ();
-	ABT_eventual_test(future_eventual_, nullptr, &this->ready_flag_);  
+	ABT_eventual_test(*eventual_ptr_, nullptr, &this->ready_flag_);  
 	if (this->ready_flag_ == 1)	
 		return stdx::future_status::ready;
 	else if (this->deferred_flag_ == 1) 
@@ -115,7 +116,7 @@ stdx::future<future_T>::wait_for (const std::chrono::duration<Rep, Period>& dur)
 		while (std::chrono::duration_cast<std::chrono::milliseconds>(end - start) < dur)
 			end = std::chrono::steady_clock::now();
 
-		ABT_eventual_test(future_eventual_, nullptr, &this->ready_flag_);  
+		ABT_eventual_test(*eventual_ptr_, nullptr, &this->ready_flag_);  
 		if (this->ready_flag_ == 1)
 			return stdx::future_status::ready;
 		else
@@ -129,7 +130,7 @@ template <class Clock, class Duration>
 stdx::future_status
 stdx::future<future_T>::wait_until (const chrono::time_point<Clock,Duration>& abs_time) 
 {
-	ABT_eventual_test(future_eventual_, nullptr, &this->ready_flag_);  
+	ABT_eventual_test(*eventual_ptr_, nullptr, &this->ready_flag_);  
 	if (this->ready_flag_ == 1)	
 		return stdx::future_status::ready;
 	else if (this->deferred_flag_ == 1) 
@@ -140,7 +141,7 @@ stdx::future<future_T>::wait_until (const chrono::time_point<Clock,Duration>& ab
 	{
 		while (std::chrono::steady_clock::now () < abs_time);
 
-		ABT_eventual_test(future_eventual_, nullptr, &this->ready_flag_);  
+		ABT_eventual_test(*eventual_ptr_, nullptr, &this->ready_flag_);  
 		if (this->ready_flag_ == 1)
 			return stdx::future_status::ready;
 		else
