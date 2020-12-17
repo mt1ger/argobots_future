@@ -11,7 +11,8 @@
 #include"future.h"
 
 // #define FUTURE
-#define XFUTURE
+// #define XFUTURE
+#define TEST_TIMES 100
 
 using namespace std;
 
@@ -97,7 +98,7 @@ int fibonacci_seq(int n)
 
 void void_func_voidp (void * argu) 
 {
-	sleep(1);
+	sleep(3);
 	int a = ((fibonacci_arg_t *)argu)->ret;
 	// int *p = &((test1 *)argu)->ret;
 	printf("the value is %d\n", a * 50);
@@ -109,45 +110,9 @@ void void_func_voidp (void * argu)
 
 int int_func_in (int a) 
 {
+	sleep(3);
 	cout << "in function what a is " << a << endl;
 	return a;
-}
-
-typedef struct
-{
-	stdx::future<int> fut;
-}stf;
-
-// void print_int (void * ptr) {
-// 	stf* s_ptr = (stf*  ) ptr;
-// 	int x = s_ptr->fut.get();
-// 	std::cout << "value: " << x << '\n';
-// }
-void print(void * ptr) 
-{
-	fibonacci_arg_t * aaa = (fibonacci_arg_t*) ptr;
-	cout << aaa->ret << ' ' << aaa->n << endl;
-}
-
-
-
-
-struct event_related 
-{
-	ABT_eventual ev;
-};
-
-void wake_up(void * ptr) 
-{
-
-	int flag;
-	event_related * ev_ptr = (event_related*) ptr;
-	ABT_eventual_test(ev_ptr->ev, nullptr, &flag) ;
-	cout << "the value in thread is " << flag << endl;
-	sleep(3);
-	ABT_eventual_set(ev_ptr->ev, nullptr, 0);
-	ABT_eventual_test(ev_ptr->ev, nullptr, &flag) ;
-	cout << "the value in thread is " << flag << endl;
 }
 
 
@@ -176,35 +141,35 @@ int main (int argc, char * argv[])
 		}
 	}
 
+	fibonacci_arg_t args;
 	chrono::steady_clock::time_point start = chrono::steady_clock::now();
 
-	/* For future */
-	#ifdef FUTURE
-	fibonacci_arg_t arg_future = {n, 0};
-    fibonacci_future(&arg_future);
-    int ret = arg_future.ret;
-    int ans = fibonacci_seq(n);
-	#endif
+	for (int i=0; i<TEST_TIMES; i++) 
+	{
+		args = {n, 0};
+		/* For future */
+		#ifdef FUTURE
+		fibonacci_future(&args);
+		#endif
 
-
-	/* For xfuture */
-	#ifdef XFUTURE
-	fibonacci_arg_t arg_xfuture = {n, 0};
-    fibonacci_xfuture(&arg_xfuture);
-    int ret = arg_xfuture.ret;
-    int ans = fibonacci_seq(n);
-	#endif
-
-	cout << "The returned value is " << ret << "; The verification is " << ans << endl;
+		/* For xfuture */
+		#ifdef XFUTURE
+		fibonacci_xfuture(&args);
+		#endif
+	}
 
 	chrono::steady_clock::time_point end = chrono::steady_clock::now();
 	chrono::duration<double> time_span = chrono::duration_cast<chrono::duration<double> >(end-start);
 	cout << "Execution time: " << time_span.count() << endl;
+	cout << "Execution time: " << time_span.count() / 100 << endl;
+	int ret = args.ret;
+	int ans = fibonacci_seq(n);
+	cout << "The returned value is " << ret << "; The verification is " << ans << endl;
+
 	chrono::milliseconds ms (5000);
 	chrono::steady_clock::time_point e = chrono::steady_clock::now();
 	chrono::steady_clock::time_point s = chrono::steady_clock::now();
 	
-
 
 	/* Do not touch this */
 	fibonacci_arg_t te1;
@@ -259,22 +224,49 @@ int main (int argc, char * argv[])
 	// cout << "the value is " << flag << endl;
 	// cout << "finished" << endl;
 
-	
+
+	// stdx::future<void> fut3;
+//  std::chrono::system_clock::time_point two_seconds_passed
+//         = std::chrono::system_clock::now() + std::chrono::seconds(2);
+ std::chrono::steady_clock::time_point two_seconds_passed
+        = std::chrono::steady_clock::now() + std::chrono::seconds(3);
 	stdx::future<void> fut1;
-	// stdx::future<int> fut2;
-	int a = 50;
+	stdx::future<int> fut2;
+	stdx::future<int> fut4;
+	int a1 = 50;
+	int a2 = 333;
 	fut1 = stdx::async(stdx::launch::async, void_func_voidp, &te1);
-	// fut2 = stdx::async(stdx::launch::async, int_func_in, a);
+	// fut3 = stdx::async(stdx::launch::deferred, void_func_voidp, te2);
+	// fut2 = stdx::async(stdx::launch::async, int_func_in, a1);
+	// fut4 = stdx::async(stdx::launch::deferred, int_func_in, a2);
+	
 	// std::chrono::steady_clock::time_point aaa = std::chrono::steady_clock::now();
 	// std::chrono::seconds sec(10);
-	// fut1.wait_for(sec);
+	// fut2.wait_for(sec);
+	//   std::cout << "checking, please wait";
+
+
+ if(stdx::future_status::ready == fut1.wait_until(two_seconds_passed))
+        {
+			// std::cout << "f_completes: " << fut1.get() << "\n"; 
+			std::cout << "f_completes " << endl; 
+				fut1.get(); 
+		}
+    else
+        { std::cout << "f_completes did not complete!\n"; }
+
+
 	// fut1.wait();
 	// test = fut1.get();
-	fut1.get();
-	// fut2.get();
-	// int ret ;
-	// ret=fut2.get();
-	// cout << "the ret is " << ret << endl;
+	// fut1.get();
+	// fut3.get();
+
+	// fut2.wait ();
+	// fut4.wait ();
+	// int  ret1 = 0, ret2;
+	// ret1 = fut2.get();
+	// ret2 = fut4.get();
+	// cout << "the ret is " << ret1 << " and " << ret2 << endl;
 
 	// cout << "the value is: " << test->ret << endl;
 	// stdx::promise<test1> prom1;
@@ -284,14 +276,6 @@ int main (int argc, char * argv[])
 	// ttt = fut1.get();
 	// cout << ttt.ret << endl;
 
-
-	// stdx::async (stdx::launch::async, as, te1);
-	// ABT_eventual_set(ev1, &te1, sizeof(te1));
-	// ABT_eventual_wait(ev1, (void**)&aaa);
-	// test1 te2;
-	// te2 = fut1.get ();
-	// printf ("te1 %d\n", te1.ret);
-	// printf ("te2 %d\n", te2->ret);
 
 	return 1;
 }

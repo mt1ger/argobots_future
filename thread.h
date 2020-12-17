@@ -51,7 +51,7 @@ namespace stdx
 			thread_Singleton* psingleton;
 
 			/* default constructor */
-			thread () noexcept {}
+			thread () noexcept; 
 
 			/* constructor with parameters */
 			template<class Fn, class ...Args>

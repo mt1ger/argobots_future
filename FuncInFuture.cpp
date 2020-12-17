@@ -16,17 +16,20 @@ stdx::async (stdx::launch policy, Fn func_in, Args ...args)
 
 	fwa_ptr->func_ = func_in;
 	fwa_ptr->tuple_ = std::make_tuple(args...); 
+	fwa_ptr->eventual_ = fut.future_eventual_;
 
 	if (policy == stdx::launch::async) 
 	{
-		fut.t1_ = thread([&fut](void * ptr){fut.template future_wrapper<decltype(fwa_ptr->func_), Args...> (ptr);}, fwa_ptr);
+		fut.t1_ = stdx::thread([&fut](void * ptr){fut.template future_wrapper_async <decltype(fwa_ptr->func_), Args...> (ptr);}, fwa_ptr);
 	}
-	
-
-	// else if (policy == stdx::launch::deferred) 
-	// {
-	// 	fut.deferred_flag_ = 1;
-	// }
+	else if (policy == stdx::launch::deferred) 
+	{
+		fut.deferred_flag_ = 1;
+		fut.t1_ = stdx::thread([&fut](void* ptr)  
+								{
+									fut.template future_wrapper_deferred <decltype(fwa_ptr->func_), Args...> (ptr);
+								}, fwa_ptr);
+	}
 
 	return fut;
 }
