@@ -166,11 +166,6 @@ int main (int argc, char * argv[])
 	int ans = fibonacci_seq(n);
 	cout << "The returned value is " << ret << "; The verification is " << ans << endl;
 
-	chrono::milliseconds ms (5000);
-	chrono::steady_clock::time_point e = chrono::steady_clock::now();
-	chrono::steady_clock::time_point s = chrono::steady_clock::now();
-	
-
 	/* Do not touch this */
 	fibonacci_arg_t te1;
 	te1.ret = 5;
@@ -178,20 +173,21 @@ int main (int argc, char * argv[])
 	te2 = new fibonacci_arg_t;
 	te2->ret = 15;
 
-	/* used to test promise.set_value and future.get */
-	// stf futu;
-	// // stdx::promise<int> foo;
-	// stdx::promise<int> bar = stdx::promise<int>();
-	// futu.fut = bar.get_future();
-	// stdx::thread th (print_int, &futu);
-	// stdx::thread th ([](void* ptr){stdx::promise<int> * ptr_internal = (stdx::promise<int>*) ptr; ptr_internal->set_value_at_thread_exit(50);}, &bar);
-	// // stdx::thread th ([&bar](){bar.set_value_at_thread_exit(50);});
-	// // // bar.set_value (150);
-	// // // th.join();
-	// futu.fut.wait();
-	// cout << futu.fut.get ();
+	/* USED to Test promise::set_value(), promise::set_value_at_thread_exit() and future::get() */
+	// int promise_ = 235;
+	// stdx::future<int> fut;
+	// stdx::promise<int> foo;
 
-	/* Use to Test ABT_eventual Functions */
+	// fut = foo.get_future();
+	// foo.set_value (move(promise_));
+	// foo.set_value (promise_);
+	// stdx::thread t1 = stdx::thread([&foo](){foo.set_value_at_thread_exit(232);});
+	// stdx::thread t1 = stdx::thread([&foo](int a){foo.set_value_at_thread_exit(a);}, promise_);
+	// cout <<	fut.get() << endl;;
+
+
+
+	/* USED to Test ABT_eventual Functions */
 	// int flag;
 	// int wait_flag;
 	// ABT_eventual ev1;
@@ -225,20 +221,20 @@ int main (int argc, char * argv[])
 	// cout << "finished" << endl;
 
 
-	/* section to test wait(), wait_for() and wait_until() */
+	/* USED to Test wait(), wait_for() and wait_until() */
 	// chrono::milliseconds span (100);
 	// std::chrono::steady_clock::time_point two_seconds_passed
 	// 	= std::chrono::steady_clock::now() + std::chrono::seconds(3);
 	// stdx::future<void> fut1;
 	// stdx::future<void> fut3;
 	// stdx::future<int> fut2;
-	stdx::future<int> fut4;
+	// stdx::future<int> fut4;
 	// int a1 = 50;
-	int a2 = 333;
+	// int a2 = 333;
 	// fut1 = stdx::async(stdx::launch::async, void_func_voidp, &te1);
 	// fut3 = stdx::async(stdx::launch::deferred, void_func_voidp, te2);
 	// fut2 = stdx::async(stdx::launch::async, int_func_in, a1);
-	fut4 = stdx::async(stdx::launch::deferred, int_func_in, a2);
+	// fut4 = stdx::async(stdx::launch::deferred, int_func_in, a2);
 
 	// while(stdx::future_status::timeout == fut2.wait_until(two_seconds_passed))
 	// while(stdx::future_status::timeout == fut1.wait_until(two_seconds_passed))
@@ -263,10 +259,12 @@ int main (int argc, char * argv[])
 
 	// fut2.wait ();
 	// fut4.wait ();
-	int  ret1 = 0, ret2 = 0;
+	// int  ret1 = 0, ret2 = 0;
 	// ret1 = fut2.get();
 	// ret2 = fut4.get();
-	cout << "the ret is " << ret1 << " and " << ret2 << endl;
+	// cout << "the ret is " << ret1 << " and " << ret2 << endl;
+
+
 
 	return 1;
 }

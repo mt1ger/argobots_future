@@ -12,6 +12,7 @@ stdx::future<future_T>::future ()
 	deferred_flag_ = 0;
 	args_ptr_ = nullptr;
 	valid_flag_ = 0;
+	promise_created_flag_ = 0;
 
 	ss_ptr_ = std::make_shared<shared_state<future_T>>();
 	eventual_ptr_ = std::make_shared<ABT_eventual>();
@@ -28,6 +29,7 @@ stdx::future<future_T>::future (future<future_T> && other)
 	std::swap(this->deferred_flag_, other.deferred_flag_);
 	std::swap(this->valid_flag_, other.valid_flag_);
 	std::swap(this->ready_flag_, other.ready_flag_);
+	std::swap(this->promise_created_flag_, other.promise_created_flag_);
 }
 
 
@@ -44,18 +46,30 @@ template<class future_T>
 future_T
 stdx::future<future_T>::get () 
 {
+
+	if (promise_created_flag_ == 1)
+	{
+		ABT_eventual_set(*eventual_ptr_, nullptr, 0);
+		cout << "de" << endl;
+		return ss_ptr_->ret_value_;
+	}
+
 	/* For async created && launch is DEFERRED: return the shared_state in future */
 	future_T ret;
 	if (deferred_flag_ == 1) 
 	{
+		cout << "int if " << endl;
 		ABT_eventual_set(*eventual_ptr_, nullptr, 0);
 		if (this->t1_.joinable())
 			t1_.join ();
 	}
 	/* For async created && launch is ASYNC: return the shared_state in future */
 	else 
+	{
+		cout << "int else" << endl;
 		if (this->t1_.joinable())
 			t1_.join();
+	}
 	
 	// For promise created future: return shared_state in promise
 	// return ss_ptr_->ret_value_;
@@ -94,6 +108,7 @@ stdx::future<future_T>::operator=(future<future_T>&& other)
 	this->valid_flag_ = other.valid_flag_;
 	this->ready_flag_ = other.ready_flag_;
 	this->eventual_ptr_ = other.eventual_ptr_;
+	this->promise_created_flag_ = other.promise_created_flag_;
 } 
 
 

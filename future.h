@@ -80,13 +80,16 @@ namespace stdx
 		std::shared_ptr<shared_state<future_T>> ss_ptr_; // shared_state pointer
 		std::shared_ptr<ABT_eventual> eventual_ptr_;
 		bool valid_flag_;
-	
 		int promise_created_flag_;
 
 		template<class Fn, class ...Args>
 		friend 
 		future<typename result_of<Fn(Args...)>::type>
 		async(stdx::launch policy, Fn func_in, Args... args);
+
+		template<class promise_T>
+		friend
+		class promise;
 
 		public:
 			future (); 
@@ -143,19 +146,22 @@ namespace stdx
 	class future<void>
 	{
 		stdx::thread t1_;
-		std::shared_ptr<ABT_eventual> eventual_ptr_;
 		int eventual_flag_; // Used to check if the future_eventual_ created
 		int deferred_flag_; // Used to indicate the launch policy
 		int ready_flag_; // Used to check future_status
 		void * args_ptr_; // Used to free async created future_wrapper_args
 		bool valid_flag_; 
-	
+		std::shared_ptr<ABT_eventual> eventual_ptr_;
 		int promise_created_flag_;
 
 		template<class Fn, class ...Args>
 		friend 
 		future<typename result_of<Fn(Args...)>::type>
 		async(stdx::launch policy, Fn func_in, Args... args);
+
+		template<class promise_T>
+		friend
+		class promise;
 
 		public:
 			inline future ()
@@ -200,7 +206,6 @@ namespace stdx
 				}
 				/* For async created && launch is ASYNC: return the shared_state in future */
 				else
-
 				{
 					if (this->t1_.joinable())
 						t1_.join();
@@ -309,35 +314,31 @@ namespace stdx
 	};
 
 
-	// template<class promise_T>
-	// class promise 
-	// {
-    //
-	// 	std::shared_ptr<shared_state<promise_T>*>  ss_ptr_;
-	// 	ABT_eventual promise_eventual_;
-    //
-	// 	// template<class arg_T>
-	// 	// friend 
-	// 	// future<arg_T>
-	// 	// async(void(*func)(void*), arg_T args);
-    //
-	// 	public:
-	// 		promise(){
-	// 			ABT_eventual_create(0, &promise_eventual_);
-	// 		}
-	// 		~promise(){}
-    //
-	// 		future<promise_T>
-	// 		get_future();
-    //
-	// 		template<class set_value_T>
-	// 		void 
-	// 		set_value(set_value_T && arg_in);	
-    //
-	// 		template<class set_value_T>
-	// 		void
-	// 		set_value_at_thread_exit (set_value_T && arg_in);
-	// };
+	template<class promise_T>
+	class promise 
+	{
+
+		std::shared_ptr<shared_state<promise_T>> ss_ptr_;
+		std::shared_ptr<ABT_eventual> eventual_ptr_;
+		// ABT_eventual promise_eventual_;
+
+		public:
+			promise(){}
+			~promise(){}
+
+			future<promise_T>
+			get_future();
+
+			void 
+			set_value(promise_T && arg_in);	
+			void 
+			set_value(const promise_T & arg_in);	
+
+			void
+			set_value_at_thread_exit (promise_T && arg_in);
+			void
+			set_value_at_thread_exit (const promise_T & arg_in);
+	};
 
 
 	template<class Ret, class ...Args>
