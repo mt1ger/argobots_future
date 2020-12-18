@@ -11,7 +11,7 @@
 #include"future.h"
 
 // #define FUTURE
-// #define XFUTURE
+#define XFUTURE
 #define TEST_TIMES 100
 
 using namespace std;
@@ -56,10 +56,12 @@ void fibonacci_xfuture(void *arg)
     int n = ((fibonacci_arg_t *)arg)->n;
     int *p_ret = &((fibonacci_arg_t *)arg)->ret;
 
-    if (n <= 1) {
+    if (n <= 1) 
+	{
         *p_ret = 1;
     } 
-	else {
+	else 
+	{
         fibonacci_arg_t child1_arg = {n - 1, 0};
         fibonacci_arg_t child2_arg = {n - 2, 0};
 
@@ -111,8 +113,15 @@ void void_func_voidp (void * argu)
 int int_func_in (int a) 
 {
 	sleep(3);
-	cout << "in function what a is " << a << endl;
+	cout << "in int_func_int what a is " << a << endl;
 	return a;
+}
+
+
+void void_func_int (int a) 
+{
+	sleep (3);
+	cout << "in void_func_int what a is " << a << endl;
 }
 
 
@@ -264,8 +273,41 @@ int main (int argc, char * argv[])
 	// ret2 = fut4.get();
 	// cout << "the ret is " << ret1 << " and " << ret2 << endl;
 
-
-
-	return 1;
+	/* USED to Test stdx::packaged_task */
+	int a = 50;
+	int a1 = 3535;
+	stdx::future<int> fut1;
+	stdx::future<void> fut2;
+	stdx::future<int> fut3;
+	stdx::future<void> fut4;
+	
+	// stdx::packaged_task<int(int)> pt1;
+	// pt1 = stdx::packaged_task<int(int)> (int_func_in);
+	// fut1 = pt1.get_future ();
+	// pt1(a);
+	// pt1.reset();
+	// fut3 = pt1.get_future();
+	// stdx::thread t1;
+	// t1 = stdx::thread([&pt1](int input){pt1.make_ready_at_thread_exit(input);}, a1);
+	// chrono::milliseconds span(100);
+	// while (fut3.wait_for(span) == stdx::future_status::timeout)
+	// 	cout << '.';
+	// fut3.wait();
+	// cout << fut3.get() << endl;;
+   
+	// stdx::packaged_task<void(int)> pt2;
+	// pt2 = stdx::packaged_task<void(int)> (void_func_int);
+	// fut2 = pt2.get_future ();
+	// pt2(a);
+	// pt2.reset();
+	// fut4 = pt2.get_future();
+	// stdx::thread t2;
+	// t2 = stdx::thread([&pt2](int input){pt2.make_ready_at_thread_exit(input);}, a1);
+	// chrono::milliseconds span(100);
+	// while (fut4.wait_for(span) == stdx::future_status::timeout)
+	// 	cout << '.';
+	// // fut4.wait();
+	// fut4.get();
+	// return 1;
 }
 

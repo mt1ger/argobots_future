@@ -4,10 +4,10 @@
 #include"future.h"
 
 template<class Fn, class ...Args>
-stdx::future<typename result_of<Fn(Args...)>::type>
+stdx::future<typename invoke_result<Fn, Args...>::type>
 stdx::async (stdx::launch policy, Fn func_in, Args ...args) 
 {
-	typedef typename std::result_of<decltype(func_in)&(Args...)>::type mytype_;
+	typedef typename std::invoke_result<decltype(func_in), Args...>::type mytype_;
 	future<mytype_> fut;
 
 	future_wrapper_args<mytype_, Args...> * fwa_ptr;

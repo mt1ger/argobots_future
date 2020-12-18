@@ -9,6 +9,7 @@
 #include<memory> // smart pointer
 #include<vector>
 #include<iterator>
+#include<algorithm> // std::swap
 #include<functional>
 #include<type_traits> // is_same
 
@@ -81,15 +82,20 @@ namespace stdx
 		std::shared_ptr<ABT_eventual> eventual_ptr_;
 		bool valid_flag_;
 		int promise_created_flag_;
+		int pt_created_flag_; // packaged_task created flag
 
 		template<class Fn, class ...Args>
 		friend 
-		future<typename result_of<Fn(Args...)>::type>
+		future<typename invoke_result<Fn, Args...>::type>
 		async(stdx::launch policy, Fn func_in, Args... args);
 
 		template<class promise_T>
 		friend
 		class promise;
+
+		template<class Fn, class ...Args>
+		friend
+		class packaged_task;
 
 		public:
 			future (); 
@@ -152,16 +158,20 @@ namespace stdx
 		void * args_ptr_; // Used to free async created future_wrapper_args
 		bool valid_flag_; 
 		std::shared_ptr<ABT_eventual> eventual_ptr_;
-		int promise_created_flag_;
+		int pt_created_flag_;
 
 		template<class Fn, class ...Args>
 		friend 
-		future<typename result_of<Fn(Args...)>::type>
+		future<typename invoke_result<Fn, Args...>::type>
 		async(stdx::launch policy, Fn func_in, Args... args);
 
 		template<class promise_T>
 		friend
 		class promise;
+
+		template<class Fn, class ...Args>
+		friend
+		class packaged_task;
 
 		public:
 			inline future ()
@@ -171,6 +181,7 @@ namespace stdx
 				ready_flag_ = 0;
 				deferred_flag_ = 0;
 				valid_flag_ = 0;
+				pt_created_flag_ = 0;
 
 				eventual_ptr_ = std::make_shared<ABT_eventual>();
 				eventual_flag_ = ABT_eventual_create (0, &(*eventual_ptr_));
@@ -192,12 +203,16 @@ namespace stdx
 				std::swap(this->deferred_flag_, other.deferred_flag_);
 				std::swap(this->valid_flag_, other.valid_flag_);
 				std::swap(this->ready_flag_, other.ready_flag_);
+				std::swap(this->pt_created_flag_, other.pt_created_flag_);
 			}
 
 			inline void 
 			get()
 			{
 				/* For async created && launch is DEFERRED: return the shared_state in future */
+				// if(pt_created_flag_ == 1)
+				
+
 				if (deferred_flag_ == 1) 
 				{
 					ABT_eventual_set(*eventual_ptr_, nullptr, 0);
@@ -217,7 +232,7 @@ namespace stdx
 				if (deferred_flag_ != 1)
 					ABT_eventual_wait(*eventual_ptr_, nullptr);
 				else	
-					cout << "future is in deferred status" << endl;
+					std::cout << "future is in deferred status" << endl;
 			}
 			
 			inline bool valid () 
@@ -282,6 +297,7 @@ namespace stdx
 				this->t1_ = std::move(other.t1_);
 				this->deferred_flag_ = other.deferred_flag_;
 				this->eventual_ptr_ = other.eventual_ptr_;
+				this->pt_created_flag_ = other.pt_created_flag_;
 				this->valid_flag_= other.valid_flag_;
 				this->ready_flag_= other.ready_flag_;
 				this->args_ptr_ = nullptr;
@@ -320,10 +336,11 @@ namespace stdx
 
 		std::shared_ptr<shared_state<promise_T>> ss_ptr_;
 		std::shared_ptr<ABT_eventual> eventual_ptr_;
-		// ABT_eventual promise_eventual_;
 
 		public:
 			promise(){}
+			promise(promise && other) noexcept;
+			promise(const promise &) = delete;
 			~promise(){}
 
 			future<promise_T>
@@ -338,40 +355,96 @@ namespace stdx
 			set_value_at_thread_exit (promise_T && arg_in);
 			void
 			set_value_at_thread_exit (const promise_T & arg_in);
+
+			void
+			operator=(promise<promise_T> && other);
+			void
+			swap(promise<promise_T> && other);
 	};
 
 
 	template<class Ret, class ...Args>
-	class packaged_task 
+	class packaged_task;
+	template<class Ret, class ...Args>
+	class packaged_task<Ret(Args...)>
 	{
-		Ret (*func_) (Args...);
-		ABT_eventual pt_eventual_;
+		std::shared_ptr<shared_state<Ret>> ss_ptr_;
+		std::shared_ptr<ABT_eventual> eventual_ptr_;
+
+		std::function<Ret(Args...)> func_;
+		std::tuple<Args...> args_;
 
 		public:
 			/* Constructor */
-			packaged_task(){};
-
+			packaged_task() noexcept {};
 			template<class Fn>
-			packaged_task(Fn && func) noexcept;
+			explicit
+			packaged_task(Fn && func_in) noexcept;
 			packaged_task(packaged_task &) = delete;
 			packaged_task(packaged_task && other) noexcept;
 			/* Destructor */
 			~packaged_task(){};
+
+			stdx::future<Ret> 
+			get_future();
+			void 
+			make_ready_at_thread_exit (Args... args);
+			packaged_task& 
+			operator= (packaged_task&& other) noexcept;
+			packaged_task& 
+			operator= (const packaged_task& other) = delete;
+			void 
+			operator()(Args... args);
+			void 
+			reset();
+			void 
+			swap (packaged_task& x) noexcept;
 	};
 
+	// template<class Ret = void, class ...Args>
+	template<class ...Args>
+	class packaged_task<void(Args...)>
+	{
+		std::shared_ptr<ABT_eventual> eventual_ptr_;
+		std::function<void(Args...)> func_;
+		std::tuple<Args...> args_;
+
+		public:
+			/* Constructor */
+			packaged_task() noexcept {};
+			template<class Fn>
+			explicit
+			packaged_task(Fn && func_in) noexcept;
+			packaged_task(packaged_task &) = delete;
+			packaged_task(packaged_task && other) noexcept;
+			/* Destructor */
+			~packaged_task(){};
+
+			stdx::future<void> 
+			get_future();
+			void 
+			make_ready_at_thread_exit (Args... args);
+			packaged_task& 
+			operator= (packaged_task&& other) noexcept;
+			packaged_task& 
+			operator= (const packaged_task& other) = delete;
+			void 
+			operator()(Args... args);
+			void 
+			reset();
+			void 
+			swap (packaged_task& x) noexcept;
+	};
 
 	template<class Fn, class ...Args>
-	future<typename result_of<Fn(Args...)>::type>
+	future<typename invoke_result<Fn, Args...>::type>
 	async (launch policy, Fn func_in, Args ...args);
-
-	// template<class Fn, class ...Args>
-	// void
-	// future_wrapper(void* ptr);
-}
+};
 
 #include"class_future.cpp"
-#include"FuncInFuture.cpp"
 #include"class_promise.cpp"
+#include"class_packaged_task.cpp"
+#include"FuncInFuture.cpp"
 #endif
 
 
