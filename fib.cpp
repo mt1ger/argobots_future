@@ -56,27 +56,27 @@ void fibonacci_xfuture(void *arg)
     int n = ((fibonacci_arg_t *)arg)->n;
     int *p_ret = &((fibonacci_arg_t *)arg)->ret;
 
-    if (n <= 1) 
+	if (n <= 1) 
 	{
-        *p_ret = 1;
-    } 
+		*p_ret = 1;
+	} 
 	else 
 	{
-        fibonacci_arg_t child1_arg = {n - 1, 0};
-        fibonacci_arg_t child2_arg = {n - 2, 0};
+		fibonacci_arg_t child1_arg = {n - 1, 0};
+		fibonacci_arg_t child2_arg = {n - 2, 0};
 
 		// stdx::thread threads (fibonacci, &child1_arg);
 		stdx::future<void> fut;
 		fut = stdx::async(stdx::launch::async, fibonacci_xfuture, &child1_arg); 
 
-        /* Calculate fib(n - 2).  We do not create another ULT. */
-        fibonacci_xfuture(&child2_arg);
+		/* Calculate fib(n - 2).  We do not create another ULT. */
+		fibonacci_xfuture(&child2_arg);
 
 		// threads.join();
 		fut.get();
 
-        *p_ret = child1_arg.ret + child2_arg.ret;
-    }
+		*p_ret = child1_arg.ret + child2_arg.ret;
+	}
 }
 #endif
 

@@ -11,10 +11,9 @@
 #include<iterator>
 #include<algorithm> // std::swap
 #include<functional>
-#include<type_traits> // is_same
+#include<type_traits> // is_same, invoke_result
 
 #include "thread.h"
-
 
 namespace stdx 
 {
